@@ -29,7 +29,7 @@ let rosterData = {};
 document.addEventListener('DOMContentLoaded', () => {
     initFilters();
     
-    // Connexion Anonyme pour le mode lecture (View Only)
+    // Connexion Anonyme pour la lecture seule
     onAuthStateChanged(auth, (user) => {
         if (user) {
             startDatabaseListener();
@@ -80,7 +80,7 @@ window.renderGrid = function() {
     const filterLevel = document.getElementById('filterLevel').value;
     const search = document.getElementById('searchPlayer').value.toLowerCase();
 
-    // En-têtes
+    // 1. En-têtes
     tableHeader.innerHTML = '<th style="text-align:left; padding-left:15px; width:200px;">Joueur</th>';
     CHARACTERS.forEach(c => {
         const isFiltered = (filterChar === c) ? 'color: var(--accent);' : '';
@@ -89,26 +89,48 @@ window.renderGrid = function() {
 
     tableBody.innerHTML = '';
 
-    // Tri
+    // 2. Tri
     let sortedMembers = [...members].sort((a, b) => {
         const diff = RANK_POWER[b.rank] - RANK_POWER[a.rank];
         return diff !== 0 ? diff : a.name.localeCompare(b.name);
     });
 
-    // Filtres
+    // 3. NOUVELLE LOGIQUE DE FILTRES INTELLIGENTS
     let filteredMembers = sortedMembers.filter(m => {
         if (search && !m.name.toLowerCase().includes(search)) return false;
         
-        if (filterChar !== "ALL" && filterLevel !== "ALL") {
-            const charLvl = (rosterData[m.name] && rosterData[m.name][filterChar]) ? rosterData[m.name][filterChar] : "NAN";
-            if (filterLevel === "4⭐" && charLvl !== "4⭐") return false;
-            if (filterLevel === "3⭐" && charLvl === "NAN") return false; 
+        const rData = rosterData[m.name] || {};
+
+        // Cas 1 : Seulement un Personnage sélectionné
+        if (filterChar !== "ALL" && filterLevel === "ALL") {
+            const lvl = rData[filterChar] || "NAN";
+            if (lvl === "NAN") return false;
         }
+        
+        // Cas 2 : Seulement un Niveau sélectionné
+        else if (filterChar === "ALL" && filterLevel !== "ALL") {
+            let hasLevelMatch = false;
+            for (let c of CHARACTERS) {
+                const lvl = rData[c] || "NAN";
+                if (filterLevel === "4⭐" && lvl === "4⭐") hasLevelMatch = true;
+                if (filterLevel === "3⭐" && (lvl === "3⭐" || lvl === "4⭐")) hasLevelMatch = true;
+            }
+            if (!hasLevelMatch) return false;
+        }
+
+        // Cas 3 : Personnage ET Niveau sélectionnés
+        else if (filterChar !== "ALL" && filterLevel !== "ALL") {
+            const lvl = rData[filterChar] || "NAN";
+            if (filterLevel === "4⭐" && lvl !== "4⭐") return false;
+            if (filterLevel === "3⭐" && lvl === "NAN") return false;
+        }
+
         return true;
     });
 
+    // 4. Générer les lignes
     if(filteredMembers.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="${CHARACTERS.length + 1}" style="text-align:center; padding:20px; color:#666;">Aucun joueur trouvé.</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="${CHARACTERS.length + 1}" style="text-align:center; padding:20px; color:#666;">Aucun joueur ne correspond aux critères.</td></tr>`;
         return;
     }
 
@@ -131,7 +153,7 @@ window.renderGrid = function() {
 
             let opacityStyle = (filterChar !== "ALL" && filterChar !== c) ? "opacity: 0.3;" : "";
 
-            // MODIFICATION ICI : C'est une <div> au lieu d'un <button>, et pas de onclick
+            // UTILISATION D'UNE DIV FIXE (Pas de bouton, pas de onclick)
             rowHTML += `
                 <td style="${opacityStyle}">
                     <div class="roster-display ${btnClass}">
