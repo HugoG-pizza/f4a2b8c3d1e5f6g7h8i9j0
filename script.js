@@ -95,8 +95,13 @@ window.renderGrid = function() {
         return diff !== 0 ? diff : a.name.localeCompare(b.name);
     });
 
-    // 3. NOUVELLE LOGIQUE DE FILTRES INTELLIGENTS
+    // 3. LOGIQUE DE FILTRES INTELLIGENTS (Avec exclusion totale des ABS)
     let filteredMembers = sortedMembers.filter(m => {
+        
+        // --- NOUVEAU : On cache TOTALEMENT les joueurs ABS ---
+        if (m.rank === 'ABS') return false;
+
+        // Filtre de nom
         if (search && !m.name.toLowerCase().includes(search)) return false;
         
         const rData = rosterData[m.name] || {};
@@ -138,7 +143,7 @@ window.renderGrid = function() {
         let rowHTML = `
             <tr>
                 <td class="player-cell">
-                    <span class="rank-mini-badge ${m.rank === 'ABS' ? 'abs-badge' : ''}">${m.rank}</span>
+                    <span class="rank-mini-badge">${m.rank}</span>
                     <span class="player-name">${m.name}</span>
                 </td>
         `;
